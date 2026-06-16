@@ -10,6 +10,7 @@ import { activeChannels, notify } from './notifier.js';
 import { Scheduler } from './scheduler.js';
 import { getInterval, INTERVAL_PRESETS, setInterval as setIntervalSetting } from './settings.js';
 import { Store } from './store.js';
+import type { Transition } from './store.js';
 import type { ServiceState, Status } from './types.js';
 
 const services = buildServices();
@@ -105,6 +106,32 @@ app.post('/api/services/:id/check', async (req, res) => {
   const result = await runCheck(service.check);
   store.record(service.id, result);
   res.json(serialize(store.get(service.id)!));
+});
+
+// Which notification channels are active (Slack / email).
+app.get('/api/notify/channels', (_req, res) => {
+  res.json({ channels: activeChannels() });
+});
+
+// Send a test alert through all configured channels.
+app.post('/api/notify/test', async (_req, res) => {
+  const channels = activeChannels();
+  if (channels.length === 0) {
+    return res
+      .status(400)
+      .json({ error: 'No notification channels configured (set SLACK_WEBHOOK_URL or SMTP)', channels });
+  }
+  const sample: Transition = {
+    serviceId: 'test',
+    serviceName: 'Test notification',
+    from: 'up',
+    to: 'down',
+    reason: 'provider_outage',
+    message: 'This is a test alert from Service Health — if you see this, notifications work ✅',
+    at: new Date().toISOString(),
+  };
+  await notify(sample);
+  res.json({ ok: true, sent: channels });
 });
 
 // In a single-service deployment, the backend serves the built frontend.
