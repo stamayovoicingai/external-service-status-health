@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# Config local de Claude Code (puede contener secretos en allow-list)
+.claude/
+frontend/dist/
+backend/dist/
+backend/.data/
