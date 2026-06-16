@@ -46,7 +46,28 @@ Abre **http://localhost:5173**. El frontend hace proxy de `/api` al backend en `
 | GET    | `/api/services/:id`           | Estado de un servicio                 |
 | POST   | `/api/services/:id/check`     | Forzar un re-check inmediato          |
 
-## Despliegue (Vercel + Render)
+## Despliegue en Easypanel (recomendado · un solo servicio)
+
+Un servicio único: el backend sirve el frontend compilado (un dominio, sin CORS).
+Always-on, ideal para el polling. Usa el `Dockerfile` de la raíz.
+
+1. Easypanel → **Create Service → App** → conecta este repo (branch `main`).
+2. **Build:** método **Dockerfile** (raíz del repo). El `Dockerfile` compila el
+   frontend y lo empaqueta con el backend.
+3. **Network/Port:** expón el puerto **4000**.
+4. **Environment:** añade tus variables (las del `.env`): `QDRANT_URL`,
+   `QDRANT_API_KEY`, `QDRANT_CHECK_CLUSTER=true`, `ELEVENLABS_API_KEY`, y las de
+   notificaciones si quieres. **Nunca** en el repo.
+5. **Domains:** añade un dominio (Easypanel ofrece uno gratis `*.easypanel.host`
+   con SSL automático, o usa el tuyo).
+
+> **Oracle Cloud:** abre los puertos **80 y 443** tanto en la *VCN Security List/NSG*
+> como en el firewall del OS (iptables/firewalld). Es el fallo más común.
+
+El frontend usa rutas relativas (`/api`), así que en este modo **no** necesitas
+`VITE_API_BASE_URL`.
+
+## Despliegue alternativo (Vercel/Netlify + Render)
 
 El backend es un proceso de larga duración (hace polling con un scheduler), así que
 **no** corre en Vercel serverless. Arquitectura recomendada:

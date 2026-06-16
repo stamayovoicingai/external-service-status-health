@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+backend/.data
+.git
+.env
+.env.local
+.claude
+*.log
+.DS_Store
+README.md
+render.yaml

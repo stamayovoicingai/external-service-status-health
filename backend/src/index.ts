@@ -1,5 +1,7 @@
 // Punto de entrada: arma servicios, arranca el scheduler y expone la API REST.
 
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import cors from 'cors';
 import express from 'express';
 import { buildServices, PORT } from './config.js';
@@ -104,6 +106,19 @@ app.post('/api/services/:id/check', async (req, res) => {
   store.record(service.id, result);
   res.json(serialize(store.get(service.id)!));
 });
+
+// En despliegue de un solo servicio, el backend sirve el frontend compilado.
+// STATIC_DIR lo define el Dockerfile; en local no existe y se usa Vite + proxy.
+const STATIC_DIR = process.env.STATIC_DIR;
+if (STATIC_DIR && existsSync(STATIC_DIR)) {
+  app.use(express.static(STATIC_DIR));
+  // Fallback SPA: cualquier GET que no sea /api/* devuelve index.html.
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+    res.sendFile(join(STATIC_DIR, 'index.html'));
+  });
+  console.log(`🖥️  Sirviendo frontend estático desde ${STATIC_DIR}`);
+}
 
 app.listen(PORT, () => {
   console.log(`\n🩺  Health API escuchando en http://localhost:${PORT}`);
