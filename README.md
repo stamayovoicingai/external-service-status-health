@@ -46,6 +46,33 @@ Abre **http://localhost:5173**. El frontend hace proxy de `/api` al backend en `
 | GET    | `/api/services/:id`           | Estado de un servicio                 |
 | POST   | `/api/services/:id/check`     | Forzar un re-check inmediato          |
 
+## Despliegue (Vercel + Render)
+
+El backend es un proceso de larga duración (hace polling con un scheduler), así que
+**no** corre en Vercel serverless. Arquitectura recomendada:
+
+- **Frontend → Vercel** (estático Vite)
+- **Backend → Render** (web service Node siempre activo)
+
+### Backend en Render
+
+1. Render → **New → Blueprint** → conecta este repo (usa el `render.yaml` incluido).
+   - Alternativa manual: **New → Web Service**, Root Directory `backend`,
+     Build `npm install`, Start `npm start`.
+2. En **Environment** del servicio, rellena las variables (las mismas del `.env`):
+   `QDRANT_URL`, `QDRANT_API_KEY`, `ELEVENLABS_API_KEY`, etc. **Nunca** en el repo.
+3. Copia la URL pública del servicio, p. ej. `https://tu-backend.onrender.com`.
+
+> Free tier de Render: el servicio se duerme tras ~15 min sin tráfico (el polling se
+> pausa hasta el siguiente request). Para monitoreo 24/7 usa un plan pago o un pinger externo.
+
+### Frontend en Vercel
+
+1. **Framework Preset:** Vite · **Root Directory:** `frontend` · Output `dist`.
+2. En **Settings → Environment Variables** añade:
+   `VITE_API_BASE_URL = https://tu-backend.onrender.com`
+3. Redeploy. El frontend usará esa URL; en local (sin la variable) usa el proxy de Vite.
+
 ## Cómo añadir un servicio nuevo
 
 Edita `backend/src/config.ts` y agrega un objeto a la lista. Tipos de check disponibles
