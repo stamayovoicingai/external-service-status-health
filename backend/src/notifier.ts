@@ -1,7 +1,7 @@
-// Notificaciones ante cambios de estado. Se activan por variables de entorno:
+// Notifications on status changes. Enabled via environment variables:
 //   - Slack: SLACK_WEBHOOK_URL (incoming webhook)
 //   - Email: SMTP_HOST + SMTP_USER + SMTP_PASS + ALERT_EMAIL_TO
-// Si no hay nada configurado, solo se loguea a consola (en index.ts).
+// If nothing is configured, it only logs to the console (in index.ts).
 
 import nodemailer, { type Transporter } from 'nodemailer';
 import type { Transition } from './store.js';
@@ -28,7 +28,7 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS && ALERT_EMAIL_TO) {
 
 const ICON: Record<string, string> = { up: '✅', degraded: '🟠', down: '🔴', unknown: '⚪' };
 
-/** Lista de canales activos, para informar al arrancar. */
+/** List of active channels, to report at startup. */
 export function activeChannels(): string[] {
   const channels: string[] = [];
   if (SLACK_WEBHOOK_URL) channels.push('Slack');
@@ -49,10 +49,10 @@ async function sendSlack(t: Transition): Promise<void> {
       {
         color,
         fields: [
-          { title: 'Servicio', value: t.serviceName, short: true },
-          { title: 'Estado', value: `${t.from} → ${t.to}`, short: true },
-          { title: 'Motivo', value: t.reason, short: true },
-          { title: 'Detalle', value: t.message, short: false },
+          { title: 'Service', value: t.serviceName, short: true },
+          { title: 'Status', value: `${t.from} → ${t.to}`, short: true },
+          { title: 'Reason', value: t.reason, short: true },
+          { title: 'Detail', value: t.message, short: false },
         ],
         ts: Math.floor(new Date(t.at).getTime() / 1000),
       },
@@ -64,9 +64,9 @@ async function sendSlack(t: Transition): Promise<void> {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) console.error(`[slack] webhook respondió HTTP ${res.status}`);
+    if (!res.ok) console.error(`[slack] webhook responded HTTP ${res.status}`);
   } catch (e) {
-    console.error('[slack] error enviando:', (e as Error).message);
+    console.error('[slack] error sending:', (e as Error).message);
   }
 }
 
@@ -76,16 +76,16 @@ async function sendEmail(t: Transition): Promise<void> {
   const html = `
     <h2>${headline(t)}</h2>
     <table cellpadding="6" style="border-collapse:collapse;font-family:sans-serif;font-size:14px">
-      <tr><td><b>Servicio</b></td><td>${t.serviceName}</td></tr>
-      <tr><td><b>Transición</b></td><td>${t.from} → ${t.to}</td></tr>
-      <tr><td><b>Motivo</b></td><td>${t.reason}</td></tr>
-      <tr><td><b>Detalle</b></td><td>${t.message}</td></tr>
-      <tr><td><b>Cuándo</b></td><td>${t.at}</td></tr>
+      <tr><td><b>Service</b></td><td>${t.serviceName}</td></tr>
+      <tr><td><b>Transition</b></td><td>${t.from} → ${t.to}</td></tr>
+      <tr><td><b>Reason</b></td><td>${t.reason}</td></tr>
+      <tr><td><b>Detail</b></td><td>${t.message}</td></tr>
+      <tr><td><b>When</b></td><td>${t.at}</td></tr>
     </table>`;
   try {
     await transporter.sendMail({ from: SMTP_FROM, to: ALERT_EMAIL_TO, subject, html });
   } catch (e) {
-    console.error('[email] error enviando:', (e as Error).message);
+    console.error('[email] error sending:', (e as Error).message);
   }
 }
 

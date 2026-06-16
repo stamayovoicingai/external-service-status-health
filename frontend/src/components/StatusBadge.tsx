@@ -1,10 +1,10 @@
 import type { Status } from '../types';
 
 export const STATUS_LABEL: Record<Status, string> = {
-  up: 'Operativo',
-  degraded: 'Degradado',
-  down: 'Caído',
-  unknown: 'Sin datos',
+  up: 'Operational',
+  degraded: 'Degraded',
+  down: 'Down',
+  unknown: 'No data',
 };
 
 export function StatusBadge({ status }: { status: Status }) {

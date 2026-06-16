@@ -1,25 +1,25 @@
-// Tipos compartidos del backend.
+// Shared backend types.
 
 export type Status = 'up' | 'degraded' | 'down' | 'unknown';
 
-/** Categoría del monitor: de qué tipo de salud informa. */
+/** Monitor category: which kind of health it reports on. */
 export type Category = 'status-feed' | 'synthetic' | 'account';
 
 /**
- * Código de razón que normaliza POR QUÉ un check está en cierto estado.
- * Especialmente útil para problemas a nivel de plataforma/cuenta.
+ * Reason code that normalizes WHY a check is in a given state.
+ * Especially useful for platform/account-level problems.
  */
 export type ReasonCode =
   | 'ok'
   | 'degraded'
   | 'provider_outage'
-  | 'auth_invalid' // 401 → key inválida o expirada
-  | 'payment_required' // 402 → falta de pago / billing
-  | 'forbidden' // 403 → cuenta restringida / sin permisos
-  | 'rate_limited' // 429 → cuota / rate limit
+  | 'auth_invalid' // 401 → invalid or expired key
+  | 'payment_required' // 402 → payment failure / billing
+  | 'forbidden' // 403 → account restricted / no permissions
+  | 'rate_limited' // 429 → quota / rate limit
   | 'timeout'
   | 'network_error'
-  | 'unconfigured' // falta una variable de entorno para activar el monitor
+  | 'unconfigured' // an environment variable is missing to enable the monitor
   | 'unknown';
 
 export interface CheckResult {
@@ -46,7 +46,7 @@ export type CheckSpec =
       url: string;
       method?: string;
       headers?: Record<string, string>;
-      /** Códigos HTTP que consideramos "up". Por defecto 200. */
+      /** HTTP codes we treat as "up". Defaults to 200. */
       expectStatus?: number[];
       timeoutMs?: number;
     }
@@ -66,6 +66,6 @@ export interface ServiceConfig {
 export interface ServiceState {
   config: ServiceConfig;
   latest: CheckResult | null;
-  history: CheckResult[]; // más reciente al final
-  uptime24h: number | null; // porcentaje 0-100
+  history: CheckResult[]; // most recent at the end
+  uptime24h: number | null; // percentage 0-100
 }

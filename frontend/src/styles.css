@@ -185,7 +185,7 @@ button.link {
   background: var(--down);
 }
 
-/* ── Secciones ── */
+/* ── Sections ── */
 .service-section {
   margin-bottom: 30px;
 }
@@ -217,7 +217,7 @@ button.link {
   font-weight: 600;
 }
 
-/* ── Grid de cards ── */
+/* ── Card grid ── */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
@@ -364,7 +364,7 @@ button.link {
   height: 40%;
 }
 
-/* ── Métricas / acciones ── */
+/* ── Metrics / actions ── */
 .metrics {
   display: flex;
   gap: 16px;

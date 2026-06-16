@@ -4,12 +4,12 @@ import { HeartbeatBar } from './HeartbeatBar';
 import { StatusBadge } from './StatusBadge';
 
 const CATEGORY_LABEL: Record<string, string> = {
-  'status-feed': 'Status oficial',
+  'status-feed': 'Official status',
   synthetic: 'Synthetic',
-  account: 'Cuenta / billing',
+  account: 'Account / billing',
 };
 
-// Razones de cuenta/plataforma que merecen una alerta destacada.
+// Account/platform reasons that deserve a highlighted alert.
 const ACCOUNT_REASONS = new Set([
   'auth_invalid',
   'payment_required',
@@ -18,21 +18,21 @@ const ACCOUNT_REASONS = new Set([
 ]);
 
 const REASON_LABEL: Record<string, string> = {
-  auth_invalid: '🔑 API key inválida o expirada',
-  payment_required: '💳 Falta de pago / billing',
-  forbidden: '🚫 Cuenta restringida',
-  rate_limited: '⏳ Cuota / rate limit agotado',
-  provider_outage: '🌩️ Caída del proveedor',
+  auth_invalid: '🔑 API key invalid or expired',
+  payment_required: '💳 Payment failure / billing',
+  forbidden: '🚫 Account restricted',
+  rate_limited: '⏳ Quota / rate limit exhausted',
+  provider_outage: '🌩️ Provider outage',
   timeout: '⌛ Timeout',
-  network_error: '📡 Error de red',
+  network_error: '📡 Network error',
 };
 
 function timeAgo(iso: string | null): string {
-  if (!iso) return 'nunca';
+  if (!iso) return 'never';
   const secs = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  if (secs < 60) return `hace ${secs}s`;
-  if (secs < 3600) return `hace ${Math.round(secs / 60)}m`;
-  return `hace ${Math.round(secs / 3600)}h`;
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  return `${Math.round(secs / 3600)}h ago`;
 }
 
 export function ServiceCard({
@@ -76,7 +76,7 @@ export function ServiceCard({
 
       <div className="metrics">
         <span>
-          <strong>{service.latencyMs != null ? `${service.latencyMs} ms` : '—'}</strong> latencia
+          <strong>{service.latencyMs != null ? `${service.latencyMs} ms` : '—'}</strong> latency
         </span>
         <span>
           <strong>{service.uptime24h != null ? `${service.uptime24h}%` : '—'}</strong> uptime 24h
@@ -86,11 +86,11 @@ export function ServiceCard({
 
       <div className="card-actions">
         <button onClick={handleRecheck} disabled={busy}>
-          {busy ? 'Comprobando…' : 'Re-check'}
+          {busy ? 'Checking…' : 'Re-check'}
         </button>
         {(incidents.length > 0 || degradedComponents.length > 0 || service.details) && (
           <button className="link" onClick={() => setOpen((v) => !v)}>
-            {open ? 'Ocultar detalles' : 'Detalles'}
+            {open ? 'Hide details' : 'Details'}
           </button>
         )}
       </div>
@@ -99,7 +99,7 @@ export function ServiceCard({
         <div className="details">
           {incidents.length > 0 && (
             <div>
-              <h4>Incidentes abiertos</h4>
+              <h4>Open incidents</h4>
               <ul>
                 {incidents.map((i, idx) => (
                   <li key={idx}>
@@ -118,7 +118,7 @@ export function ServiceCard({
           )}
           {degradedComponents.length > 0 && (
             <div>
-              <h4>Componentes afectados</h4>
+              <h4>Affected components</h4>
               <ul>
                 {degradedComponents.map((c, idx) => (
                   <li key={idx}>
@@ -130,7 +130,7 @@ export function ServiceCard({
           )}
           {recentFeed.length > 0 && (
             <div>
-              <h4>Incidentes recientes (feed)</h4>
+              <h4>Recent incidents (feed)</h4>
               <ul>
                 {recentFeed.map((r, idx) => (
                   <li key={idx}>

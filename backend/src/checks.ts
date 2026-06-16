@@ -1,5 +1,5 @@
-// Motor de health checks. Cada "kind" sabe cómo consultar un proveedor
-// y normaliza el resultado a un CheckResult uniforme.
+// Health check engine. Each "kind" knows how to query a provider
+// and normalizes the result into a uniform CheckResult.
 
 import { XMLParser } from 'fast-xml-parser';
 import type { CheckResult, CheckSpec, ReasonCode, Status } from './types.js';
@@ -20,7 +20,7 @@ function make(
   return { status, reason, latencyMs, message, details, checkedAt: now() };
 }
 
-/** fetch con timeout vía AbortController. */
+/** fetch with a timeout via AbortController. */
 async function timedFetch(
   url: string,
   init: RequestInit,
@@ -41,9 +41,9 @@ async function timedFetch(
 function errorToResult(e: unknown, latencyMs: number): CheckResult {
   const err = e as { name?: string; message?: string };
   if (err?.name === 'AbortError') {
-    return make('down', 'timeout', latencyMs, 'Timeout: el servicio no respondió a tiempo');
+    return make('down', 'timeout', latencyMs, 'Timeout: the service did not respond in time');
   }
-  return make('down', 'network_error', null, `Error de red: ${err?.message ?? String(e)}`);
+  return make('down', 'network_error', null, `Network error: ${err?.message ?? String(e)}`);
 }
 
 // ── Atlassian Statuspage (OpenAI, Deepgram, ElevenLabs) ──────────
@@ -69,7 +69,7 @@ async function checkStatuspage(url: string, timeoutMs: number): Promise<CheckRes
     const out = await timedFetch(url, { headers: { accept: 'application/json' } }, timeoutMs);
     latencyMs = out.latencyMs;
     if (!out.res.ok) {
-      return make('down', 'provider_outage', latencyMs, `El status page respondió HTTP ${out.res.status}`);
+      return make('down', 'provider_outage', latencyMs, `The status page responded HTTP ${out.res.status}`);
     }
     const data: any = await out.res.json();
     const indicator: string = data?.status?.indicator ?? 'unknown';
@@ -84,7 +84,7 @@ async function checkStatuspage(url: string, timeoutMs: number): Promise<CheckRes
     const incidentsRaw: any[] = Array.isArray(data?.incidents) ? data.incidents : [];
     const openIncidents = incidentsRaw.filter((i) => i?.status && i.status !== 'resolved');
 
-    const message = description || (status === 'up' ? 'Todos los sistemas operativos' : indicator);
+    const message = description || (status === 'up' ? 'All systems operational' : indicator);
     return make(status, reason, latencyMs, message, {
       indicator,
       description,
@@ -126,20 +126,20 @@ async function checkBetterUptime(url: string, timeoutMs: number): Promise<CheckR
     const out = await timedFetch(url, { headers: { accept: 'application/json' } }, timeoutMs);
     latencyMs = out.latencyMs;
     if (!out.res.ok) {
-      return make('down', 'provider_outage', latencyMs, `El status page respondió HTTP ${out.res.status}`);
+      return make('down', 'provider_outage', latencyMs, `The status page responded HTTP ${out.res.status}`);
     }
     const data: any = await out.res.json();
     const raw: string = data?.page?.status ?? 'unknown';
     const { status, reason } = betterStatus(raw);
     const message =
-      status === 'up' ? 'Todos los sistemas operativos' : `Estado reportado: ${raw}`;
+      status === 'up' ? 'All systems operational' : `Reported status: ${raw}`;
     return make(status, reason, latencyMs, message, { reported: raw, page: data?.page?.name });
   } catch (e) {
     return errorToResult(e, latencyMs);
   }
 }
 
-// ── Qdrant (synthetic de infraestructura) ────────────────────────
+// ── Qdrant (infrastructure synthetic) ────────────────────────────
 async function checkQdrant(
   baseUrl: string,
   apiKey: string | undefined,
@@ -155,10 +155,10 @@ async function checkQdrant(
     const out = await timedFetch(`${base}/healthz`, { headers }, timeoutMs);
     latencyMs = out.latencyMs;
     if (out.res.status === 401 || out.res.status === 403) {
-      return make('down', 'auth_invalid', latencyMs, 'Qdrant rechazó la api-key (inválida o ausente)');
+      return make('down', 'auth_invalid', latencyMs, 'Qdrant rejected the api-key (invalid or missing)');
     }
     if (!out.res.ok) {
-      return make('down', 'provider_outage', latencyMs, `Qdrant /healthz respondió HTTP ${out.res.status}`);
+      return make('down', 'provider_outage', latencyMs, `Qdrant /healthz responded HTTP ${out.res.status}`);
     }
 
     const details: Record<string, unknown> = { healthz: 'ok', endpoint: base };
@@ -175,42 +175,42 @@ async function checkQdrant(
             peers: result.peers ? Object.keys(result.peers).length : undefined,
           };
           if (result.status && result.status !== 'enabled') {
-            return make('degraded', 'degraded', latencyMs, `Clúster en estado: ${result.status}`, details);
+            return make('degraded', 'degraded', latencyMs, `Cluster in state: ${result.status}`, details);
           }
         } else {
-          details.cluster = `no disponible (HTTP ${c.res.status})`;
+          details.cluster = `unavailable (HTTP ${c.res.status})`;
         }
       } catch {
-        details.cluster = 'no disponible (error al consultar /cluster)';
+        details.cluster = 'unavailable (error querying /cluster)';
       }
     }
 
-    return make('up', 'ok', latencyMs, 'Qdrant operativo (healthz OK)', details);
+    return make('up', 'ok', latencyMs, 'Qdrant healthy (healthz OK)', details);
   } catch (e) {
     return errorToResult(e, latencyMs);
   }
 }
 
-// ── Synthetic autenticado (cuenta / billing / key) ───────────────
-// Interpreta el código HTTP para detectar problemas a nivel de plataforma.
+// ── Authenticated synthetic (account / billing / key) ────────────
+// Interprets the HTTP code to detect platform-level problems.
 function httpToAccountResult(httpStatus: number, latencyMs: number, expect: number[]): CheckResult {
   if (expect.includes(httpStatus) || (httpStatus >= 200 && httpStatus < 300)) {
-    return make('up', 'ok', latencyMs, `API respondió HTTP ${httpStatus} — credenciales válidas`);
+    return make('up', 'ok', latencyMs, `API responded HTTP ${httpStatus} — valid credentials`);
   }
   switch (httpStatus) {
     case 401:
-      return make('down', 'auth_invalid', latencyMs, '401 — API key inválida o expirada');
+      return make('down', 'auth_invalid', latencyMs, '401 — API key invalid or expired');
     case 402:
-      return make('down', 'payment_required', latencyMs, '402 — Falta de pago / billing (servicio suspendido)');
+      return make('down', 'payment_required', latencyMs, '402 — Payment failure / billing (service suspended)');
     case 403:
-      return make('degraded', 'forbidden', latencyMs, '403 — Cuenta restringida o sin permisos');
+      return make('degraded', 'forbidden', latencyMs, '403 — Account restricted or no permissions');
     case 429:
-      return make('degraded', 'rate_limited', latencyMs, '429 — Cuota o rate limit agotado');
+      return make('degraded', 'rate_limited', latencyMs, '429 — Quota or rate limit exhausted');
     default:
       if (httpStatus >= 500) {
-        return make('down', 'provider_outage', latencyMs, `${httpStatus} — Error del proveedor`);
+        return make('down', 'provider_outage', latencyMs, `${httpStatus} — Provider error`);
       }
-      return make('degraded', 'unknown', latencyMs, `HTTP ${httpStatus} inesperado`);
+      return make('degraded', 'unknown', latencyMs, `Unexpected HTTP ${httpStatus}`);
   }
 }
 
@@ -233,8 +233,8 @@ async function checkSynthetic(
   }
 }
 
-// ── RSS / Atom (feed de incidentes) ──────────────────────────────
-// Deriva el estado actual del incidente más reciente de un Statuspage feed.
+// ── RSS / Atom (incident feed) ───────────────────────────────────
+// Derives the current state from the most recent incident in a Statuspage feed.
 const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
 
 function stripTags(html: string): string {
@@ -245,12 +245,12 @@ function stripTags(html: string): string {
     .trim();
 }
 
-// Estado del update más reciente dentro de la descripción de un incidente.
+// State of the most recent update within an incident's description.
 function feedItemState(body: string): { status: Status; reason: ReasonCode; label: string } {
   const text = stripTags(body).toLowerCase();
-  // El feed no expone el impacto (minor/major), así que un incidente activo
-  // se marca como "degraded" en lugar de "down" para no sobre-alarmar.
-  // Las caídas totales se reflejan vía el indicator del status page (summary.json).
+  // The feed does not expose the impact (minor/major), so an active incident
+  // is marked as "degraded" instead of "down" to avoid over-alarming.
+  // Full outages are reflected via the status page indicator (summary.json).
   const order: Array<[RegExp, Status, ReasonCode, string]> = [
     [/resolved|completed|recovered/, 'up', 'ok', 'resolved'],
     [/investigating/, 'degraded', 'degraded', 'investigating'],
@@ -259,13 +259,13 @@ function feedItemState(body: string): { status: Status; reason: ReasonCode; labe
     [/verifying|update/, 'degraded', 'degraded', 'update'],
     [/scheduled|in progress|maintenance/, 'degraded', 'degraded', 'maintenance'],
   ];
-  // El update más reciente aparece primero en el texto del Statuspage feed.
+  // The most recent update appears first in the Statuspage feed text.
   let best: [number, Status, ReasonCode, string] | null = null;
   for (const [re, status, reason, label] of order) {
     const idx = text.search(re);
     if (idx >= 0 && (best === null || idx < best[0])) best = [idx, status, reason, label];
   }
-  if (!best) return { status: 'up', reason: 'ok', label: 'sin estado' };
+  if (!best) return { status: 'up', reason: 'ok', label: 'no state' };
   return { status: best[1], reason: best[2], label: best[3] };
 }
 
@@ -275,12 +275,12 @@ async function checkRss(url: string, timeoutMs: number): Promise<CheckResult> {
     const out = await timedFetch(url, { headers: { accept: 'application/rss+xml, application/atom+xml' } }, timeoutMs);
     latencyMs = out.latencyMs;
     if (!out.res.ok) {
-      return make('down', 'provider_outage', latencyMs, `El feed respondió HTTP ${out.res.status}`);
+      return make('down', 'provider_outage', latencyMs, `The feed responded HTTP ${out.res.status}`);
     }
     const xml = await out.res.text();
     const data: any = xmlParser.parse(xml);
 
-    // Normalizar RSS (rss.channel.item) y Atom (feed.entry).
+    // Normalize RSS (rss.channel.item) and Atom (feed.entry).
     let items: any[] = [];
     if (data?.rss?.channel?.item) {
       items = Array.isArray(data.rss.channel.item) ? data.rss.channel.item : [data.rss.channel.item];
@@ -299,18 +299,18 @@ async function checkRss(url: string, timeoutMs: number): Promise<CheckResult> {
     }
 
     if (items.length === 0) {
-      return make('up', 'ok', latencyMs, 'Sin incidentes publicados en el feed', { source: url });
+      return make('up', 'ok', latencyMs, 'No incidents published in the feed', { source: url });
     }
 
-    // Ordenar por fecha desc para tomar el incidente más reciente.
+    // Sort by date desc to take the most recent incident.
     items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const latest = items[0];
     const state = feedItemState(latest.body);
 
     const message =
       state.status === 'up'
-        ? 'Sin incidentes activos (último incidente resuelto)'
-        : `Incidente activo: ${latest.title} (${state.label})`;
+        ? 'No active incidents (latest incident resolved)'
+        : `Active incident: ${latest.title} (${state.label})`;
 
     return make(state.status, state.reason, latencyMs, message, {
       source: url,
@@ -326,7 +326,7 @@ async function checkRss(url: string, timeoutMs: number): Promise<CheckResult> {
   }
 }
 
-// ── ElevenLabs cuenta (key + cuota de caracteres) ────────────────
+// ── ElevenLabs account (key + character quota) ───────────────────
 async function checkElevenLabsAccount(apiKey: string, timeoutMs: number): Promise<CheckResult> {
   let latencyMs = 0;
   try {
@@ -337,7 +337,7 @@ async function checkElevenLabsAccount(apiKey: string, timeoutMs: number): Promis
     );
     latencyMs = out.latencyMs;
 
-    // Reutilizamos la interpretación de códigos (401/402/403/429…).
+    // Reuse the HTTP code interpretation (401/402/403/429…).
     if (out.res.status !== 200) {
       return httpToAccountResult(out.res.status, latencyMs, [200]);
     }
@@ -347,7 +347,7 @@ async function checkElevenLabsAccount(apiKey: string, timeoutMs: number): Promis
     const used = Number(sub.character_count ?? 0);
     const limit = Number(sub.character_limit ?? 0);
     const usagePct = limit > 0 ? Math.round((used / limit) * 1000) / 10 : null;
-    const tier = sub.tier ?? 'desconocido';
+    const tier = sub.tier ?? 'unknown';
 
     const details = {
       tier,
@@ -359,12 +359,12 @@ async function checkElevenLabsAccount(apiKey: string, timeoutMs: number): Promis
         : undefined,
     };
 
-    // Avisar si la cuota está casi agotada (billing/limit).
+    // Warn if the quota is nearly exhausted (billing/limit).
     if (usagePct != null && usagePct >= 95) {
-      return make('degraded', 'rate_limited', latencyMs, `Cuota casi agotada: ${usagePct}% usado`, details);
+      return make('degraded', 'rate_limited', latencyMs, `Quota nearly exhausted: ${usagePct}% used`, details);
     }
-    const pctTxt = usagePct != null ? ` · cuota ${usagePct}%` : '';
-    return make('up', 'ok', latencyMs, `Cuenta OK (tier ${tier})${pctTxt}`, details);
+    const pctTxt = usagePct != null ? ` · quota ${usagePct}%` : '';
+    return make('up', 'ok', latencyMs, `Account OK (tier ${tier})${pctTxt}`, details);
   } catch (e) {
     return errorToResult(e, latencyMs);
   }

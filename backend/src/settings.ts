@@ -1,4 +1,4 @@
-// Ajustes en runtime (intervalo de auto-actualización), con persistencia a disco.
+// Runtime settings (auto-refresh interval), with persistence to disk.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -7,12 +7,12 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url)); // backend/src
 const FILE = resolve(here, '../.data/settings.json');
 
-// Presets ofrecidos en el frontend (segundos).
+// Presets offered in the frontend (seconds).
 export const INTERVAL_PRESETS = [
   { label: '1 min', seconds: 60 },
   { label: '5 min', seconds: 300 },
   { label: '15 min', seconds: 900 },
-  { label: '1 hora', seconds: 3600 },
+  { label: '1 hour', seconds: 3600 },
 ];
 
 const MIN_INTERVAL = 15;
@@ -25,7 +25,7 @@ function persist(): void {
     mkdirSync(dirname(FILE), { recursive: true });
     writeFileSync(FILE, JSON.stringify({ intervalSeconds }, null, 2));
   } catch {
-    /* persistencia best-effort */
+    /* best-effort persistence */
   }
 }
 
@@ -38,7 +38,7 @@ function persist(): void {
       }
     }
   } catch {
-    /* usar default */
+    /* use default */
   }
 })();
 

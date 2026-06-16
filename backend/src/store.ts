@@ -1,9 +1,9 @@
-// Almacén en memoria del estado de cada servicio + historial (ring buffer).
-// Suficiente para un MVP; cambiar por SQLite/Postgres si se quiere persistencia.
+// In-memory store of each service's state + history (ring buffer).
+// Good enough for an MVP; swap for SQLite/Postgres if persistence is needed.
 
 import type { CheckResult, ServiceConfig, ServiceState } from './types.js';
 
-const HISTORY_LIMIT = 200; // nº de checks guardados por servicio
+const HISTORY_LIMIT = 200; // number of checks kept per service
 
 export interface Transition {
   serviceId: string;
@@ -39,7 +39,7 @@ export class Store {
     if (state.history.length > HISTORY_LIMIT) state.history.shift();
     state.uptime24h = computeUptime(state.history);
 
-    // Detectar transición de estado para notificaciones.
+    // Detect a status transition for notifications.
     if (prev && prev.status !== result.status) {
       const t: Transition = {
         serviceId,
@@ -54,7 +54,7 @@ export class Store {
         try {
           fn(t);
         } catch {
-          /* no romper el ciclo por un listener */
+          /* don't break the loop because of one listener */
         }
       }
     }
@@ -75,5 +75,5 @@ function computeUptime(history: CheckResult[]): number | null {
   const recent = history.filter((h) => new Date(h.checkedAt).getTime() >= cutoff);
   const sample = recent.length > 0 ? recent : history;
   const ok = sample.filter((h) => h.status === 'up').length;
-  return Math.round((ok / sample.length) * 1000) / 10; // 1 decimal
+  return Math.round((ok / sample.length) * 1000) / 10; // 1 decimal place
 }

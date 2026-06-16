@@ -1,17 +1,17 @@
-// Construye la lista de servicios a monitorear a partir de variables de entorno.
-// Los status pages públicos están siempre activos; los synthetic autenticados
-// solo se activan si existe la key correspondiente.
+// Builds the list of services to monitor from environment variables.
+// Public status pages are always active; authenticated synthetics
+// are only enabled when the corresponding key exists.
 
 import dotenv from 'dotenv';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ServiceConfig } from './types.js';
 
-// El backend corre con cwd = backend/, pero el .env vive en la raíz del repo.
-// Cargamos primero el de la raíz y luego el local como fallback (sin sobrescribir).
+// The backend runs with cwd = backend/, but the .env lives at the repo root.
+// Load the root one first, then the local one as a fallback (without overwriting).
 const here = dirname(fileURLToPath(import.meta.url)); // backend/src
-dotenv.config({ path: resolve(here, '../../.env') }); // raíz del repo
-dotenv.config(); // fallback: backend/.env o cwd
+dotenv.config({ path: resolve(here, '../../.env') }); // repo root
+dotenv.config(); // fallback: backend/.env or cwd
 
 const DEFAULT_INTERVAL = Number(process.env.DEFAULT_INTERVAL_SECONDS ?? 60);
 
@@ -20,12 +20,12 @@ export const PORT = Number(process.env.PORT ?? 4000);
 export function buildServices(): ServiceConfig[] {
   const services: ServiceConfig[] = [];
 
-  // ── Status feeds públicos (sin key) ────────────────────────────
+  // ── Public status feeds (no key) ───────────────────────────────
   services.push({
     id: 'openai-status',
     name: 'OpenAI',
     category: 'status-feed',
-    description: 'Status page oficial de OpenAI (Statuspage)',
+    description: 'Official OpenAI status page (Statuspage)',
     intervalSeconds: DEFAULT_INTERVAL,
     check: { kind: 'statuspage', url: 'https://status.openai.com/api/v2/summary.json' },
   });
@@ -34,7 +34,7 @@ export function buildServices(): ServiceConfig[] {
     id: 'deepgram-status',
     name: 'Deepgram',
     category: 'status-feed',
-    description: 'Status page oficial de Deepgram (Statuspage)',
+    description: 'Official Deepgram status page (Statuspage)',
     intervalSeconds: DEFAULT_INTERVAL,
     check: { kind: 'statuspage', url: 'https://status.deepgram.com/api/v2/summary.json' },
   });
@@ -43,7 +43,7 @@ export function buildServices(): ServiceConfig[] {
     id: 'elevenlabs-status',
     name: 'ElevenLabs',
     category: 'status-feed',
-    description: 'Status page oficial de ElevenLabs (Statuspage)',
+    description: 'Official ElevenLabs status page (Statuspage)',
     intervalSeconds: DEFAULT_INTERVAL,
     check: { kind: 'statuspage', url: 'https://status.elevenlabs.io/api/v2/summary.json' },
   });
@@ -52,20 +52,20 @@ export function buildServices(): ServiceConfig[] {
     id: 'soniox-status',
     name: 'Soniox',
     category: 'status-feed',
-    description: 'Status page oficial de Soniox (Better Uptime)',
+    description: 'Official Soniox status page (Better Uptime)',
     intervalSeconds: DEFAULT_INTERVAL,
     check: { kind: 'betteruptime', url: 'https://status.soniox.com/api/v2/summary.json' },
   });
 
-  // ── Qdrant: synthetic de infraestructura ───────────────────────
-  // Siempre visible: si falta QDRANT_URL, la card aparece "sin configurar".
+  // ── Qdrant: infrastructure synthetic ───────────────────────────
+  // Always visible: if QDRANT_URL is missing, the card shows as "unconfigured".
   services.push({
     id: 'qdrant-cluster',
     name: 'Qdrant',
     category: 'synthetic',
     description: process.env.QDRANT_URL
-      ? 'Health check directo contra tu instancia de Qdrant'
-      : 'Health check de tu instancia de Qdrant (sin configurar)',
+      ? 'Direct health check against your Qdrant instance'
+      : 'Health check for your Qdrant instance (unconfigured)',
     intervalSeconds: DEFAULT_INTERVAL,
     check: process.env.QDRANT_URL
       ? {
@@ -76,29 +76,29 @@ export function buildServices(): ServiceConfig[] {
         }
       : {
           kind: 'unconfigured',
-          hint: 'Añade QDRANT_URL (y QDRANT_API_KEY si aplica) en .env para activar este monitor',
+          hint: 'Add QDRANT_URL (and QDRANT_API_KEY if applicable) in .env to enable this monitor',
         },
   });
 
-  // ── Feed de incidentes (RSS/Atom) ──────────────────────────────
-  // Complementa el summary.json con detalle/histórico de incidentes.
+  // ── Incident feed (RSS/Atom) ───────────────────────────────────
+  // Complements summary.json with incident detail/history.
   services.push({
     id: 'openai-incidents',
-    name: 'OpenAI · incidentes',
+    name: 'OpenAI · incidents',
     category: 'status-feed',
-    description: 'Feed RSS de incidentes de OpenAI',
+    description: 'OpenAI incident RSS feed',
     intervalSeconds: DEFAULT_INTERVAL,
     check: { kind: 'rss', url: 'https://status.openai.com/feed.rss' },
   });
 
-  // ── Synthetic autenticados: salud a nivel de cuenta/billing ────
-  // Detectan key expirada (401), falta de pago (402), cuota (429), etc.
+  // ── Authenticated synthetics: account/billing-level health ─────
+  // Detect expired key (401), payment failure (402), quota (429), etc.
   if (process.env.ELEVENLABS_API_KEY) {
     services.push({
       id: 'elevenlabs-account',
-      name: 'ElevenLabs · cuenta',
+      name: 'ElevenLabs · account',
       category: 'account',
-      description: 'Cuenta ElevenLabs: valida key y muestra uso de cuota',
+      description: 'ElevenLabs account: validates key and shows quota usage',
       intervalSeconds: DEFAULT_INTERVAL,
       check: { kind: 'elevenlabs-account', apiKey: process.env.ELEVENLABS_API_KEY },
     });
@@ -107,9 +107,9 @@ export function buildServices(): ServiceConfig[] {
   if (process.env.DEEPGRAM_API_KEY) {
     services.push({
       id: 'deepgram-account',
-      name: 'Deepgram · cuenta',
+      name: 'Deepgram · account',
       category: 'account',
-      description: 'Llamada autenticada a /v1/projects (detecta key/billing)',
+      description: 'Authenticated call to /v1/projects (detects key/billing)',
       intervalSeconds: DEFAULT_INTERVAL,
       check: {
         kind: 'synthetic',
@@ -122,9 +122,9 @@ export function buildServices(): ServiceConfig[] {
   if (process.env.OPENAI_API_KEY) {
     services.push({
       id: 'openai-account',
-      name: 'OpenAI · cuenta',
+      name: 'OpenAI · account',
       category: 'account',
-      description: 'Llamada autenticada a /v1/models (detecta key/billing/cuota)',
+      description: 'Authenticated call to /v1/models (detects key/billing/quota)',
       intervalSeconds: DEFAULT_INTERVAL,
       check: {
         kind: 'synthetic',
@@ -137,13 +137,13 @@ export function buildServices(): ServiceConfig[] {
   if (process.env.SONIOX_API_KEY) {
     services.push({
       id: 'soniox-account',
-      name: 'Soniox · cuenta',
+      name: 'Soniox · account',
       category: 'account',
-      description: 'Llamada autenticada a la API de Soniox (detecta key/billing)',
+      description: 'Authenticated call to the Soniox API (detects key/billing)',
       intervalSeconds: DEFAULT_INTERVAL,
       check: {
         kind: 'synthetic',
-        // Endpoint de lectura ligero; ajusta si tu plan usa otra ruta.
+        // Lightweight read endpoint; adjust if your plan uses a different route.
         url: 'https://api.soniox.com/v1/models',
         headers: { Authorization: `Bearer ${process.env.SONIOX_API_KEY}` },
       },

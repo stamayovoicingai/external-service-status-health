@@ -1,110 +1,110 @@
-# Service Health · Monitor de servicios externos
+# Service Health · External service monitor
 
-App tipo **Uptime Kuma** para vigilar la salud de Qdrant, OpenAI, Deepgram, ElevenLabs y Soniox.
-Backend en **Node + TypeScript + Express**, frontend en **React + Vite**.
+An **Uptime Kuma**-style app to watch the health of Qdrant, OpenAI, Deepgram, ElevenLabs and Soniox.
+Backend in **Node + TypeScript + Express**, frontend in **React + Vite**.
 
-Distingue dos niveles de salud:
+It distinguishes two levels of health:
 
-1. **Status oficial (status-feed)** — caídas globales del proveedor, vía sus status pages públicos. No requiere API key.
-2. **Cuenta / billing (account)** — problemas tuyos: API key expirada (`401`), falta de pago (`402`), cuenta restringida (`403`), cuota agotada (`429`). Se detectan llamando la API real con tu key. Se activan solo si pones la key en `.env`.
+1. **Official status (status-feed)** — global provider outages, via their public status pages. No API key required.
+2. **Account / billing (account)** — your own problems: expired API key (`401`), payment failure (`402`), restricted account (`403`), exhausted quota (`429`). Detected by calling the real API with your key. Enabled only if you set the key in `.env`.
 
-## Fuentes de salud por servicio
+## Health sources per service
 
-| Servicio    | Fuente                                                       | Key |
+| Service     | Source                                                       | Key |
 | ----------- | ------------------------------------------------------------ | --- |
 | OpenAI      | `status.openai.com/api/v2/summary.json` (Statuspage)         | No  |
 | Deepgram    | `status.deepgram.com/api/v2/summary.json` (Statuspage)       | No  |
 | ElevenLabs  | `status.elevenlabs.io/api/v2/summary.json` (Statuspage)      | No  |
 | Soniox      | `status.soniox.com/api/v2/summary.json` (Better Uptime)      | No  |
-| Qdrant      | `GET {QDRANT_URL}/healthz` (+ opcional `/cluster`)           | URL + api-key |
-| *-account   | Llamada autenticada a la API real (detecta key/billing/cuota)| Sí  |
+| Qdrant      | `GET {QDRANT_URL}/healthz` (+ optional `/cluster`)           | URL + api-key |
+| *-account   | Authenticated call to the real API (detects key/billing/quota)| Yes |
 
-## Arranque rápido
+## Quick start
 
 ```bash
-# 1. Instalar dependencias (backend + frontend)
-npm install                 # raíz (concurrently)
-npm run install:all         # backend y frontend
+# 1. Install dependencies (backend + frontend)
+npm install                 # root (concurrently)
+npm run install:all         # backend and frontend
 
-# 2. (Opcional) configurar keys
-cp .env.example .env        # rellena lo que quieras; sin esto ya funcionan los status pages
+# 2. (Optional) configure keys
+cp .env.example .env        # fill in whatever you want; the status pages work without this
 
-# 3. Levantar todo (backend :4000 + frontend :5173)
+# 3. Run everything (backend :4000 + frontend :5173)
 npm run dev
 ```
 
-Abre **http://localhost:5173**. El frontend hace proxy de `/api` al backend en `:4000`.
+Open **http://localhost:5173**. The frontend proxies `/api` to the backend on `:4000`.
 
-> El `.env` se lee desde la raíz del repo. Si lo prefieres dentro de `backend/`, muévelo ahí.
+> The `.env` is read from the repo root. If you prefer it inside `backend/`, move it there.
 
-## API del backend
+## Backend API
 
-| Método | Ruta                          | Descripción                          |
+| Method | Path                          | Description                          |
 | ------ | ----------------------------- | ------------------------------------ |
-| GET    | `/api/health`                 | Liveness del propio monitor          |
-| GET    | `/api/services`               | Estado de todos los servicios + general |
-| GET    | `/api/services/:id`           | Estado de un servicio                 |
-| POST   | `/api/services/:id/check`     | Forzar un re-check inmediato          |
+| GET    | `/api/health`                 | Liveness of the monitor itself       |
+| GET    | `/api/services`               | Status of all services + overall     |
+| GET    | `/api/services/:id`           | Status of a single service           |
+| POST   | `/api/services/:id/check`     | Force an immediate re-check          |
 
-## Despliegue en Easypanel (recomendado · un solo servicio)
+## Deploying on Easypanel (recommended · single service)
 
-Un servicio único: el backend sirve el frontend compilado (un dominio, sin CORS).
-Always-on, ideal para el polling. Usa el `Dockerfile` de la raíz.
+A single service: the backend serves the built frontend (one domain, no CORS).
+Always-on, ideal for polling. Uses the `Dockerfile` at the root.
 
-1. Easypanel → **Create Service → App** → conecta este repo (branch `main`).
-2. **Build:** método **Dockerfile** (raíz del repo). El `Dockerfile` compila el
-   frontend y lo empaqueta con el backend.
-3. **Network/Port:** expón el puerto **4000**.
-4. **Environment:** añade tus variables (las del `.env`): `QDRANT_URL`,
-   `QDRANT_API_KEY`, `QDRANT_CHECK_CLUSTER=true`, `ELEVENLABS_API_KEY`, y las de
-   notificaciones si quieres. **Nunca** en el repo.
-5. **Domains:** añade un dominio (Easypanel ofrece uno gratis `*.easypanel.host`
-   con SSL automático, o usa el tuyo).
+1. Easypanel → **Create Service → App** → connect this repo (branch `main`).
+2. **Build:** **Dockerfile** method (repo root). The `Dockerfile` builds the
+   frontend and bundles it with the backend.
+3. **Network/Port:** expose port **4000**.
+4. **Environment:** add your variables (those from `.env`): `QDRANT_URL`,
+   `QDRANT_API_KEY`, `QDRANT_CHECK_CLUSTER=true`, `ELEVENLABS_API_KEY`, and the
+   notification ones if you want. **Never** in the repo.
+5. **Domains:** add a domain (Easypanel offers a free `*.easypanel.host` one
+   with automatic SSL, or use your own).
 
-> **Oracle Cloud:** abre los puertos **80 y 443** tanto en la *VCN Security List/NSG*
-> como en el firewall del OS (iptables/firewalld). Es el fallo más común.
+> **Oracle Cloud:** open ports **80 and 443** both in the *VCN Security List/NSG*
+> and in the OS firewall (iptables/firewalld). This is the most common failure.
 
-El frontend usa rutas relativas (`/api`), así que en este modo **no** necesitas
+The frontend uses relative paths (`/api`), so in this mode you do **not** need
 `VITE_API_BASE_URL`.
 
-## Despliegue alternativo (Vercel/Netlify + Render)
+## Alternative deployment (Vercel/Netlify + Render)
 
-El backend es un proceso de larga duración (hace polling con un scheduler), así que
-**no** corre en Vercel serverless. Arquitectura recomendada:
+The backend is a long-running process (it polls on a scheduler), so it does
+**not** run on Vercel serverless. Recommended architecture:
 
-- **Frontend → Vercel** (estático Vite)
-- **Backend → Render** (web service Node siempre activo)
+- **Frontend → Vercel** (static Vite)
+- **Backend → Render** (always-on Node web service)
 
-### Backend en Render
+### Backend on Render
 
-1. Render → **New → Blueprint** → conecta este repo (usa el `render.yaml` incluido).
-   - Alternativa manual: **New → Web Service**, Root Directory `backend`,
+1. Render → **New → Blueprint** → connect this repo (uses the included `render.yaml`).
+   - Manual alternative: **New → Web Service**, Root Directory `backend`,
      Build `npm install`, Start `npm start`.
-2. En **Environment** del servicio, rellena las variables (las mismas del `.env`):
-   `QDRANT_URL`, `QDRANT_API_KEY`, `ELEVENLABS_API_KEY`, etc. **Nunca** en el repo.
-3. Copia la URL pública del servicio, p. ej. `https://tu-backend.onrender.com`.
+2. In the service's **Environment**, fill in the variables (the same as `.env`):
+   `QDRANT_URL`, `QDRANT_API_KEY`, `ELEVENLABS_API_KEY`, etc. **Never** in the repo.
+3. Copy the service's public URL, e.g. `https://your-backend.onrender.com`.
 
-> Free tier de Render: el servicio se duerme tras ~15 min sin tráfico (el polling se
-> pausa hasta el siguiente request). Para monitoreo 24/7 usa un plan pago o un pinger externo.
+> Render free tier: the service sleeps after ~15 min without traffic (polling
+> pauses until the next request). For 24/7 monitoring use a paid plan or an external pinger.
 
-### Frontend en Vercel
+### Frontend on Vercel
 
 1. **Framework Preset:** Vite · **Root Directory:** `frontend` · Output `dist`.
-2. En **Settings → Environment Variables** añade:
-   `VITE_API_BASE_URL = https://tu-backend.onrender.com`
-3. Redeploy. El frontend usará esa URL; en local (sin la variable) usa el proxy de Vite.
+2. In **Settings → Environment Variables** add:
+   `VITE_API_BASE_URL = https://your-backend.onrender.com`
+3. Redeploy. The frontend will use that URL; locally (without the variable) it uses the Vite proxy.
 
-## Cómo añadir un servicio nuevo
+## How to add a new service
 
-Edita `backend/src/config.ts` y agrega un objeto a la lista. Tipos de check disponibles
+Edit `backend/src/config.ts` and add an object to the list. Available check types
 (`backend/src/checks.ts`): `statuspage`, `betteruptime`, `qdrant`, `synthetic`.
 
-## Notas y siguientes pasos
+## Notes and next steps
 
-- **Persistencia**: el estado vive en memoria (`backend/src/store.ts`). Para historial
-  duradero, cambiar el `Store` por SQLite/Postgres.
-- **Notificaciones**: ya hay un punto de enganche en `store.onTransition(...)`
-  (ahora solo loguea a consola). Ahí se conecta Telegram / Slack / email / WhatsApp.
-- **Soniox synthetic**: el endpoint autenticado por defecto (`/v1/models`) es un placeholder;
-  ajústalo al recurso de lectura real de tu plan si activas `SONIOX_API_KEY`.
-- **Qdrant**: `/healthz` es liveness. Para clúster distribuido pon `QDRANT_CHECK_CLUSTER=true`.
+- **Persistence**: state lives in memory (`backend/src/store.ts`). For durable
+  history, replace the `Store` with SQLite/Postgres.
+- **Notifications**: there is already a hook in `store.onTransition(...)`
+  (it currently only logs to the console). That's where Telegram / Slack / email / WhatsApp connect.
+- **Soniox synthetic**: the default authenticated endpoint (`/v1/models`) is a placeholder;
+  adjust it to the real read resource for your plan if you enable `SONIOX_API_KEY`.
+- **Qdrant**: `/healthz` is liveness. For a distributed cluster set `QDRANT_CHECK_CLUSTER=true`.

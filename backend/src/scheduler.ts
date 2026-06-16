@@ -1,5 +1,5 @@
-// Ejecuta los checks de todos los servicios en un intervalo global,
-// reconfigurable en caliente (auto-updater).
+// Runs the checks for all services on a global interval,
+// reconfigurable on the fly (auto-updater).
 
 import { runCheck } from './checks.js';
 import type { Store } from './store.js';
@@ -17,7 +17,7 @@ export class Scheduler {
     this.intervalSeconds = Math.max(15, intervalSeconds);
   }
 
-  /** Lanza un check ahora y guarda el resultado. */
+  /** Runs a check now and stores the result. */
   async runOnce(service: ServiceConfig): Promise<void> {
     try {
       const result = await runCheck(service.check);
@@ -27,7 +27,7 @@ export class Scheduler {
         status: 'down',
         reason: 'unknown',
         latencyMs: null,
-        message: `Fallo inesperado en el check: ${(e as Error).message}`,
+        message: `Unexpected check failure: ${(e as Error).message}`,
         checkedAt: new Date().toISOString(),
       });
     }
@@ -48,14 +48,14 @@ export class Scheduler {
   start(): void {
     for (const service of this.services) {
       this.store.register(service);
-      // Primer check inmediato, escalonado para no golpear todo a la vez.
+      // First check runs immediately, staggered so everything doesn't fire at once.
       const jitter = Math.floor(Math.random() * 1500);
       setTimeout(() => void this.runOnce(service), jitter);
     }
     this.schedule();
   }
 
-  /** Cambia el intervalo de polling en caliente. */
+  /** Changes the polling interval on the fly. */
   setInterval(seconds: number): void {
     this.intervalSeconds = Math.max(15, Math.floor(seconds));
     this.clearTimers();

@@ -8,7 +8,7 @@ const FALLBACK_PRESETS: IntervalPreset[] = [
   { label: '1 min', seconds: 60 },
   { label: '5 min', seconds: 300 },
   { label: '15 min', seconds: 900 },
-  { label: '1 hora', seconds: 3600 },
+  { label: '1 hour', seconds: 3600 },
 ];
 
 interface Section {
@@ -18,27 +18,27 @@ interface Section {
   match: (s: Service) => boolean;
 }
 
-// Dos grupos: estado público (status pages) vs cuentas autenticadas (API keys).
+// Two groups: public status (status pages) vs authenticated accounts (API keys).
 const SECTIONS: Section[] = [
   {
     key: 'public',
-    title: '🌐 Estado público del proveedor',
-    subtitle: 'Status pages oficiales · no requieren API key',
+    title: '🌐 Public provider status',
+    subtitle: 'Official status pages · no API key required',
     match: (s) => s.category === 'status-feed',
   },
   {
     key: 'private',
-    title: '🔑 Tus cuentas · API Keys',
-    subtitle: 'Checks autenticados con tus credenciales · detectan key expirada, falta de pago y cuota',
+    title: '🔑 Your accounts · API Keys',
+    subtitle: 'Authenticated checks with your credentials · detect expired key, payment failure and quota',
     match: (s) => s.category === 'account' || s.category === 'synthetic',
   },
 ];
 
 const OVERALL_MESSAGE: Record<Status, string> = {
-  up: 'Todos los servicios operativos',
-  degraded: 'Algunos servicios con problemas',
-  down: 'Hay servicios caídos',
-  unknown: 'Esperando datos…',
+  up: 'All services operational',
+  degraded: 'Some services have issues',
+  down: 'Some services are down',
+  unknown: 'Waiting for data…',
 };
 
 export function App() {
@@ -62,7 +62,7 @@ export function App() {
     }
   }, []);
 
-  // Cargar presets + intervalo inicial.
+  // Load presets + initial interval.
   useEffect(() => {
     fetchSettings()
       .then((s) => {
@@ -73,7 +73,7 @@ export function App() {
     void load();
   }, [load]);
 
-  // Auto-refresh según el intervalo seleccionado.
+  // Auto-refresh based on the selected interval.
   const loadRef = useRef(load);
   loadRef.current = load;
   useEffect(() => {
@@ -81,7 +81,7 @@ export function App() {
     return () => clearInterval(id);
   }, [intervalSeconds]);
 
-  // Cuenta regresiva visual hasta la próxima actualización.
+  // Visual countdown until the next refresh.
   useEffect(() => {
     const id = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000);
     return () => clearInterval(id);
@@ -129,12 +129,12 @@ export function App() {
           <span className="logo">🩺</span>
           <div>
             <h1>Service Health</h1>
-            <p>Monitor de servicios externos · estilo Uptime Kuma</p>
+            <p>External service monitor · Uptime Kuma style</p>
           </div>
         </div>
         <div className="controls">
           <label className="interval">
-            Auto-actualizar
+            Auto-refresh
             <select
               value={intervalSeconds}
               onChange={(e) => handleIntervalChange(Number(e.target.value))}
@@ -146,8 +146,8 @@ export function App() {
               ))}
             </select>
           </label>
-          <span className="countdown">próxima en {fmt(countdown)}</span>
-          <button onClick={load}>Actualizar ahora</button>
+          <span className="countdown">next in {fmt(countdown)}</span>
+          <button onClick={load}>Refresh now</button>
         </div>
       </header>
 
@@ -157,21 +157,21 @@ export function App() {
           <div>
             <h2>{OVERALL_MESSAGE[overall]}</h2>
             <p>
-              Estado general: {STATUS_LABEL[overall]}
-              {lastSync && ` · sincronizado ${lastSync.toLocaleTimeString()}`}
+              Overall status: {STATUS_LABEL[overall]}
+              {lastSync && ` · synced ${lastSync.toLocaleTimeString()}`}
             </p>
           </div>
         </div>
         <div className="overall-counts">
-          <span className="count count-up">{counts.up ?? 0} operativos</span>
-          <span className="count count-degraded">{counts.degraded ?? 0} degradados</span>
-          <span className="count count-down">{counts.down ?? 0} caídos</span>
+          <span className="count count-up">{counts.up ?? 0} operational</span>
+          <span className="count count-degraded">{counts.degraded ?? 0} degraded</span>
+          <span className="count count-down">{counts.down ?? 0} down</span>
         </div>
       </section>
 
       {error && (
         <div className="banner-error">
-          No se pudo contactar el backend ({error}). ¿Está corriendo en el puerto 4000?
+          Could not reach the backend ({error}). Is it running on port 4000?
         </div>
       )}
 
@@ -192,8 +192,8 @@ export function App() {
                 {data && items.length === 0 && (
                   <p className="empty">
                     {section.key === 'private'
-                      ? 'Añade API keys en .env para monitorear tus cuentas.'
-                      : 'Sin servicios en esta sección.'}
+                      ? 'Add API keys in .env to monitor your accounts.'
+                      : 'No services in this section.'}
                   </p>
                 )}
               </div>
@@ -204,8 +204,8 @@ export function App() {
 
       <footer className="footer">
         <p>
-          Auto-actualización cada {fmt(intervalSeconds)} · los status pages no requieren API key ·
-          los monitores de “cuenta / billing” aparecen al añadir keys en <code>.env</code>.
+          Auto-refresh every {fmt(intervalSeconds)} · status pages require no API key ·
+          “account / billing” monitors appear once you add keys in <code>.env</code>.
         </p>
       </footer>
     </div>

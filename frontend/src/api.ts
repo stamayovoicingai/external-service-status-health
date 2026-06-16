@@ -1,7 +1,7 @@
 import type { Service, ServicesResponse, Settings } from './types';
 
-// En local queda vacío y usa el proxy de Vite (/api → :4000).
-// En producción (Vercel) se define VITE_API_BASE_URL con la URL del backend (Render).
+// Empty in local dev, where it relies on the Vite proxy (/api → :4000).
+// In production (Vercel), VITE_API_BASE_URL is set to the backend URL (Render).
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export async function fetchServices(): Promise<ServicesResponse> {
