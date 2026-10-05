@@ -370,6 +370,69 @@ async function checkElevenLabsAccount(apiKey: string, timeoutMs: number): Promis
   }
 }
 
+// ── Pinecone index (key + index stats) ───────────────────────────
+async function checkPinecone(host: string, apiKey: string, timeoutMs: number): Promise<CheckResult> {
+  let latencyMs = 0;
+  try {
+    const out = await timedFetch(
+      `${host}/describe_index_stats`,
+      {
+        method: 'POST',
+        headers: {
+          'Api-Key': apiKey,
+          'Content-Type': 'application/json',
+          'X-Pinecone-API-Version': '2025-04',
+        },
+        body: '{}',
+      },
+      timeoutMs,
+    );
+    latencyMs = out.latencyMs;
+
+    // Reuse the HTTP code interpretation (401/402/403/429…).
+    if (out.res.status !== 200) {
+      if (out.res.status === 404) {
+        return make('down', 'unknown', latencyMs, '404 — Index not found (check the host)', { host });
+      }
+      return httpToAccountResult(out.res.status, latencyMs, [200]);
+    }
+
+    const data: any = await out.res.json();
+    const totalVectors = Number(data?.totalVectorCount ?? data?.total_vector_count ?? 0);
+    const fullness = Number(data?.indexFullness ?? data?.index_fullness ?? 0);
+    const namespacesRaw: Record<string, any> = data?.namespaces ?? {};
+    const namespaces = Object.entries(namespacesRaw).map(([name, ns]) => ({
+      name: name || '(default)',
+      vectors: Number(ns?.vectorCount ?? ns?.vector_count ?? 0),
+    }));
+
+    const details = {
+      host,
+      dimension: data?.dimension,
+      metric: data?.metric,
+      totalVectors,
+      indexFullnessPct: Math.round(fullness * 1000) / 10,
+      namespaces,
+    };
+
+    if (totalVectors === 0) {
+      return make('degraded', 'degraded', latencyMs, 'Index reachable but empty (0 vectors)', details);
+    }
+    if (fullness >= 0.9) {
+      return make('degraded', 'rate_limited', latencyMs, `Index nearly full: ${details.indexFullnessPct}%`, details);
+    }
+    return make(
+      'up',
+      'ok',
+      latencyMs,
+      `Index OK · ${totalVectors.toLocaleString('en-US')} vectors · ${namespaces.length} namespace(s)`,
+      details,
+    );
+  } catch (e) {
+    return errorToResult(e, latencyMs);
+  }
+}
+
 // ── Dispatcher ───────────────────────────────────────────────────
 export async function runCheck(spec: CheckSpec): Promise<CheckResult> {
   const timeoutMs = ('timeoutMs' in spec && spec.timeoutMs) || DEFAULT_TIMEOUT;
@@ -386,6 +449,8 @@ export async function runCheck(spec: CheckSpec): Promise<CheckResult> {
       return checkRss(spec.url, timeoutMs);
     case 'elevenlabs-account':
       return checkElevenLabsAccount(spec.apiKey, timeoutMs);
+    case 'pinecone':
+      return checkPinecone(spec.host, spec.apiKey, timeoutMs);
     case 'unconfigured':
       return make('unknown', 'unconfigured', null, spec.hint);
   }

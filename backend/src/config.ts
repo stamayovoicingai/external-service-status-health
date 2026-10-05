@@ -150,5 +150,30 @@ export function buildServices(): ServiceConfig[] {
     });
   }
 
+  // Pinecone: one monitor per index host (SURA EPS knowledge base).
+  // describe_index_stats is a read-only call that validates the key and the index.
+  if (process.env.PINECONE_API_KEY) {
+    const hosts = (process.env.PINECONE_INDEX_HOSTS || DEFAULT_PINECONE_HOSTS.join(','))
+      .split(',')
+      .map((h) => h.trim().replace(/\/$/, ''))
+      .filter(Boolean);
+    for (const host of hosts) {
+      const index = new URL(host).hostname.split('.')[0];
+      services.push({
+        id: `pinecone-${index}`,
+        name: `Pinecone · ${index}`,
+        category: 'account',
+        description: `describe_index_stats on index ${index}: validates key and shows vectors/namespaces`,
+        intervalSeconds: DEFAULT_INTERVAL,
+        check: { kind: 'pinecone', host, apiKey: process.env.PINECONE_API_KEY },
+      });
+    }
+  }
+
   return services;
 }
+
+const DEFAULT_PINECONE_HOSTS = [
+  'https://sura-demo-bot-25-jul-fspasve.svc.apw5-4e34-81fa.pinecone.io',
+  'https://sura-demo-bot-24-jul-fspasve.svc.apw5-4e34-81fa.pinecone.io',
+];

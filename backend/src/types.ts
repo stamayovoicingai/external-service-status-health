@@ -52,6 +52,7 @@ export type CheckSpec =
     }
   | { kind: 'rss'; url: string; timeoutMs?: number }
   | { kind: 'elevenlabs-account'; apiKey: string; timeoutMs?: number }
+  | { kind: 'pinecone'; host: string; apiKey: string; timeoutMs?: number }
   | { kind: 'unconfigured'; hint: string };
 
 export interface ServiceConfig {

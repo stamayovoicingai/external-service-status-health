@@ -30,6 +30,11 @@ services:
         sync: false
       - key: SONIOX_API_KEY
         sync: false
+      # Pinecone: una sola key; un monitor por host (por defecto los 2 índices SURA)
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_HOSTS
+        value: "https://sura-demo-bot-25-jul-fspasve.svc.apw5-4e34-81fa.pinecone.io,https://sura-demo-bot-24-jul-fspasve.svc.apw5-4e34-81fa.pinecone.io"
       # Notificaciones (opcionales)
       - key: SLACK_WEBHOOK_URL
         sync: false
